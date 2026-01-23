@@ -2,6 +2,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
+#include <X11/XKBlib.h>
 
 struct KeyboardX11::Impl {
     Display *display = nullptr;
@@ -20,6 +21,12 @@ bool KeyboardX11::init(const char *displayName) {
     if (!impl_->display) {
         return false;
     }
+
+    // Ask X to send only a stream of KeyPress events for auto-repeat,
+    // with a single KeyRelease when the key is actually released.
+    // This avoids repeated Note On/Off while holding a key.
+    int detectableSupported = 0;
+    XkbSetDetectableAutoRepeat(impl_->display, True, &detectableSupported);
 
     int screen = DefaultScreen(impl_->display);
     Window root = RootWindow(impl_->display, screen);
