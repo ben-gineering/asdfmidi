@@ -3,10 +3,13 @@
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <X11/XKBlib.h>
+#include <X11/Xatom.h>
 
 struct KeyboardX11::Impl {
     Display *display = nullptr;
     Window window = 0;
+    bool shutdownRequested = false;
+    Atom wmDeleteWindow = 0;
 };
 
 KeyboardX11::KeyboardX11() : impl_(new Impl) {}
@@ -42,7 +45,11 @@ bool KeyboardX11::init(const char *displayName) {
 
     XStoreName(impl_->display, impl_->window, "asdfmidi keyboard");
 
-    XSelectInput(impl_->display, impl_->window, KeyPressMask | KeyReleaseMask | ExposureMask);
+    // Set up WM_DELETE_WINDOW protocol for graceful shutdown
+    impl_->wmDeleteWindow = XInternAtom(impl_->display, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(impl_->display, impl_->window, &impl_->wmDeleteWindow, 1);
+
+    XSelectInput(impl_->display, impl_->window, KeyPressMask | KeyReleaseMask | StructureNotifyMask);
     XMapWindow(impl_->display, impl_->window);
 
     XFlush(impl_->display);
@@ -57,6 +64,21 @@ bool KeyboardX11::nextEvent(KeyEvent &ev) {
 
     XEvent xev;
     XNextEvent(impl_->display, &xev);
+
+    // Handle window close request
+    if (xev.type == ClientMessage) {
+        XClientMessageEvent *cme = reinterpret_cast<XClientMessageEvent *>(&xev);
+        if (static_cast<Atom>(cme->data.l[0]) == impl_->wmDeleteWindow) {
+            impl_->shutdownRequested = true;
+            return false;
+        }
+    }
+
+    // Handle window destroy
+    if (xev.type == DestroyNotify) {
+        impl_->shutdownRequested = true;
+        return false;
+    }
 
     if (xev.type == KeyPress || xev.type == KeyRelease) {
         XKeyEvent *kev = reinterpret_cast<XKeyEvent *>(&xev);
@@ -79,4 +101,12 @@ void KeyboardX11::shutdown() {
         XCloseDisplay(impl_->display);
         impl_->display = nullptr;
     }
+}
+
+void KeyboardX11::requestShutdown() {
+    impl_->shutdownRequested = true;
+}
+
+bool KeyboardX11::shouldShutdown() const {
+    return impl_->shutdownRequested;
 }

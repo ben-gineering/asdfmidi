@@ -1,6 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
+
+#include "keyboard_x11.hpp"
+#include "mapping.hpp"
+#include "midi_output.hpp"
 
 struct AppConfig {
     int midiChannel = 0;
@@ -18,4 +23,7 @@ public:
 
 private:
     AppConfig config_;
+    std::unique_ptr<MidiOutput> midi_;
+    std::unique_ptr<KeyboardX11> keyboard_;
+    std::unique_ptr<KeyMapping> mapping_;
 };

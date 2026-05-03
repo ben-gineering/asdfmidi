@@ -19,6 +19,14 @@ int KeyMapping::octaveOffset() const {
     return octaveOffset_;
 }
 
+NoteAction KeyMapping::panic() {
+    // Reset all key states
+    for (auto &pair : keyStates_) {
+        pair.second.pressed = false;
+    }
+    return {NoteActionType::AllNotesOff, 0};
+}
+
 void KeyMapping::initDefaultLayout() {
     keyToSemitone_[XK_z] = 0;
     keyToSemitone_[XK_s] = 1;
@@ -50,23 +58,28 @@ void KeyMapping::initDefaultLayout() {
 NoteAction KeyMapping::handleKeyEvent(unsigned long keySym, bool isPress) {
     if (keySym == XK_bracketleft && isPress) {
         --octaveOffset_;
-        return {};
+        return {NoteActionType::None, 0};
     }
     if (keySym == XK_bracketright && isPress) {
         ++octaveOffset_;
-        return {};
+        return {NoteActionType::None, 0};
+    }
+
+    // Panic key: Escape
+    if (keySym == XK_Escape && isPress) {
+        return panic();
     }
 
     auto it = keyToSemitone_.find(keySym);
     if (it == keyToSemitone_.end()) {
-        return {};
+        return {NoteActionType::None, 0};
     }
 
     State &st = keyStates_[keySym];
 
     if (isPress) {
         if (st.pressed) {
-            return {};
+            return {NoteActionType::None, 0};
         }
 
         int noteValue = baseNote_ + octaveOffset_ * 12 + it->second;
@@ -80,22 +93,14 @@ NoteAction KeyMapping::handleKeyEvent(unsigned long keySym, bool isPress) {
         st.pressed = true;
         st.note = static_cast<std::uint8_t>(noteValue);
 
-        NoteAction action;
-        action.send = true;
-        action.noteOn = true;
-        action.note = st.note;
-        return action;
+        return {NoteActionType::NoteOn, st.note};
     }
 
     if (!st.pressed) {
-        return {};
+        return {NoteActionType::None, 0};
     }
 
     st.pressed = false;
 
-    NoteAction action;
-    action.send = true;
-    action.noteOn = false;
-    action.note = st.note;
-    return action;
+    return {NoteActionType::NoteOff, st.note};
 }

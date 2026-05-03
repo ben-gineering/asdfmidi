@@ -12,8 +12,19 @@ MidiOutput::MidiOutput() : impl_(new Impl) {}
 
 MidiOutput::~MidiOutput() = default;
 
-void MidiOutput::openVirtualPort(const std::string &name) {
-    impl_->midiOut.openVirtualPort(name);
+bool MidiOutput::openVirtualPort(const std::string &name) {
+    try {
+        impl_->midiOut.openVirtualPort(name);
+        return true;
+    } catch (const RtMidiError &e) {
+        std::cerr << "MIDI Error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool MidiOutput::isOpen() const {
+    // If we successfully constructed and opened without throwing, we're open
+    return impl_ != nullptr;
 }
 
 void MidiOutput::noteOn(std::uint8_t channel, std::uint8_t note, std::uint8_t velocity) {

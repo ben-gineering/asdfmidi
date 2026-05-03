@@ -3,9 +3,15 @@
 #include <cstdint>
 #include <unordered_map>
 
+enum class NoteActionType {
+    None,
+    NoteOn,
+    NoteOff,
+    AllNotesOff  // Panic
+};
+
 struct NoteAction {
-    bool send = false;
-    bool noteOn = false;
+    NoteActionType type = NoteActionType::None;
     std::uint8_t note = 0;
 };
 
@@ -18,6 +24,9 @@ public:
     int octaveOffset() const;
 
     NoteAction handleKeyEvent(unsigned long keySym, bool isPress);
+
+    // Trigger panic from external (e.g., signal handler)
+    NoteAction panic();
 
 private:
     int baseNote_;

@@ -21,6 +21,10 @@ public:
     bool nextEvent(KeyEvent &ev);
     void shutdown();
 
+    // Request graceful shutdown (call when window close requested)
+    void requestShutdown();
+    bool shouldShutdown() const;
+
 private:
     struct Impl;
     Impl *impl_;
